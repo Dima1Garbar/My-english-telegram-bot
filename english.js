@@ -5,25 +5,75 @@ const token = '5111912871:AAHNb8DvfGLHoelXn43kcLwZJwceqthk-a4';
 const bot = new TelegramBot(token, {polling: true});
 
 const fs = require('fs');
-const fileName_ukr = './list_of_words/ukr.json'
-const fileName_engl = './list_of_words/english.json'
-const fileName_all = './list_of_words/words.json'
-
-const file_ukr = require(fileName_ukr);
-const file_engl = require(fileName_engl);
-const file_all = require(fileName_all)
+const fileName_all = './list_of_words/english.json'
 
 var work = '';
 var translate_all = false;
 var add_word_ukr = false;
 var add_word_engl = false;
 var add_word_to_list = false;
+var only_ukr = false;
+var only_engl = false;
+var show_all = false;
+var check_word = false;
+var true_word = false;
+var true_user = false;
+
+var list_of_english_words = ' qwertyuiopasdfghjklzxcvbnm';
+var list_of_ukrainian_words = ' йцукенгшщзхїфівапролджєячсмитьбю';
+var spec_symbol = '!@#$%^&*()_-+="№;%:?/*[]{}|.,123456789'
+
+
+
+function check_message(mes, type_of_word){
+    for (var i = 0; i < mes.length; i++){
+        for (var j = 0; j < spec_symbol.length; j++){
+            if (mes[i] === spec_symbol[j]){
+                return false;
+            }
+        }}
+    for (var i = 0; i < mes.length; i++){
+        if (type_of_word === 'ukr'){
+            for (var j = 0; j < list_of_english_words.length; j++){
+                if (mes[i] === list_of_english_words[j]){
+                    return false;
+                }
+                else if(i === mes.length-1){
+                    return true
+                }
+            }
+        }
+        else if (type_of_word === 'eng'){
+            for (var j = 0; j < list_of_ukrainian_words.length; j++){
+                if (mes[i] === list_of_ukrainian_words[j]){
+                    return false;
+                }
+                else if(i === mes.length-1){
+                    return true
+                }
+            }
+        }
+    }
+}
 
 bot.onText(/add_word/, (msg, match) => {
+
     const chatId = msg.chat.id;
-    work = 'add_the _word'
-    add_word_to_list = true
+
+    add_word_to_list = true;
+    work = 'add_the_word';
     
+    translate_all = false;
+    add_word_ukr = false;
+    add_word_engl = false;
+    only_ukr = false;
+    only_engl = false;
+    show_all = false;
+    check_word = false;
+    true_word = false;
+    true_user = false;
+
+
     bot.sendMessage(chatId, "Add a word",{
         reply_markup: {
             keyboard: [
@@ -37,8 +87,21 @@ bot.onText(/add_word/, (msg, match) => {
 
 
 bot.onText(/translate/, (msg, match) => {
+
     const chatId = msg.chat.id;
 
+    work = '';
+    translate_all = false;
+    add_word_ukr = false;
+    add_word_engl = false;
+    add_word_to_list = false;
+    only_ukr = false;
+    only_engl = false;
+    show_all = false;
+    check_word = false;
+    true_word = false;
+    true_user = false;
+    
     bot.sendMessage(chatId, "Translate",{
         reply_markup: {
             keyboard: [
@@ -50,21 +113,56 @@ bot.onText(/translate/, (msg, match) => {
     );
 })
 
+bot.onText(/show_list/, (msg, match) => {
+
+    const chatId = msg.chat.id;
+
+    work = 'show_list';
+
+    translate_all = false;
+    add_word_ukr = false;
+    add_word_engl = false;
+    add_word_to_list = false;
+    only_ukr = false;
+    only_engl = false;
+    show_all = false;
+    check_word = false;
+    true_word = false;
+    true_user = false;
+    
+    bot.sendMessage(chatId, "My list",{
+        reply_markup: {
+            keyboard: [
+                ['Тільк українські слова', 'Тільки англійські слова'],
+                ['Українські - Англійські'],
+                ['Cancel']
+            ]
+        }
+       }
+    );
+})
+
 bot.on('message', (msg) => {
+
     const chatId = msg.chat.id;
 
     if (msg.text === 'Cancel'){
-        translate_all = false
         bot.sendMessage(chatId, 'Cancel',{
             reply_markup:{
                 remove_keyboard: true
             }
         })
         work = '';
-        add_word_engl = false;
-        add_word_ukr = false;
         translate_all = false;
+        add_word_ukr = false;
+        add_word_engl = false;
         add_word_to_list = false;
+        only_ukr = false;
+        only_engl = false;
+        show_all = false;
+        true_word = false;
+        check_word = false;
+    
     }
 
     if (msg.text === 'Back' && translate_all == true){
@@ -96,6 +194,21 @@ bot.on('message', (msg) => {
         add_word_ukr = false;
         add_word_engl = false;}
     
+    if (check_word === true){
+        var message = ''
+        if (add_word_engl === true){
+            message =  check_message(msg.text, 'eng')}
+        else if (add_word_ukr === true){
+            message =  check_message(msg.text, 'ukr')}
+        
+        if (message == true){
+            true_word = true;
+        }
+        else if (message == false){
+            true_word = false;
+            bot.sendMessage(chatId, 'Введіть слово без спеціальних символів!')
+        }
+    }
 
     if (work != '' ){
         if (translate_all === true){
@@ -111,14 +224,111 @@ bot.on('message', (msg) => {
             }
             trans()
         }
-
-      
+        if (add_word_to_list === true && true_word === true){{
+            if ((add_word_engl === true || add_word_ukr === true) && true_word === true){
+            var typed_word = msg.text;
+            var translate_word = {}
+            async function trans(){
+            if (add_word_engl == true){
+                var translator = await talegram_translation (typed_word, {from: 'en', to: 'uk'});
+                translate_word[typed_word] = translator['text'];
+            }
+            else if (add_word_ukr == true){
+                var translator = await talegram_translation (typed_word, {from: 'uk', to: 'en'});
+                translate_word[translator['text']] = typed_word;
+            };
+            fs.readFile(fileName_all, 'utf8', function readFileCallback(err, data){
+                if (err){
+                    console.log(err);
+                } else {
+                obj = JSON.parse(data);
+                chatId =  chatId.toString()
+                var k_eys_chatid = Object.keys(obj);
+                var key_translate_word = Object.keys(translate_word);
+                chatId_str = chatId.toString()
+                for (i = 0; i < k_eys_chatid.length; i++){
+                    if (obj[k_eys_chatid[i]] === chatId_str){
+                        obj[k_eys_chatid[i]][key_translate_word] = translate_word[key_translate_word]
+                    }
+                    else if (i === k_eys_chatid.length -1 && obj[k_eys_chatid[i]] != chatId){
+                        obj[chatId] = {}
+                        obj[chatId][key_translate_word] = translate_word[key_translate_word]
+                    }
+                }
+                
+                json = JSON.stringify(obj); //convert it back to json
+                fs.writeFile(fileName_all, json, function writeJSON(err){});
+            }});
+            }
+        trans()
+        bot.sendMessage(chatId, 'Added ' + typed_word)
+        }}}
+        if (work === 'show_list'){
+            fs.readFile(fileName_all, 'utf8', function readFileCallback(err, data){
+                if (err){
+                    console.log(err);
+                } else {
+                obj = JSON.parse(data);
+                var k_eys_chatid = Object.keys(obj);
+                chatId_str = chatId.toString()
+                for (i = 0; i < k_eys_chatid.length; i++){
+                    if (k_eys_chatid[i] === chatId_str){
+                        true_user = true;
+                    }
+                    else if (i === k_eys_chatid.length-1 && true_user === false){
+                        console.log(i === k_eys_chatid.length-1 && k_eys_chatid[i] != chatId_str)
+                        obj[chatId] = {}
+                    }
+                }
+                if  (only_ukr === true && true_user === true){
+                    if (Object.keys(obj[chatId_str]).length === 0) {
+                        bot.sendMessage(chatId, "Ваш список слів пустий")
+                    }
+                    else{
+                        var keys_list = Object.keys(obj[chatId_str])
+                        for (var i = 0; i < keys_list.length; i++){
+                            bot.sendMessage(chatId, obj[chatId_str][keys_list[i]])
+                        }
+                    }
+                    only_ukr = false;
+                   
+                }
+                else if (only_engl === true && true_user === true){
+                    if (Object.keys(obj[chatId_str]).length === 0) {
+                        bot.sendMessage(chatId, "Ваш список слів пустий")
+                    }
+                    else{
+                        var keys_list = Object.keys(obj[chatId_str])
+                        for (var i = 0; i < keys_list.length; i++){
+                            bot.sendMessage(chatId, keys_list[i])
+                        }
+                    }
+                    only_engl = false;
+                }
+                else if (show_all === true && true_user === true){
+                    if (Object.keys(obj[chatId_str]).length === 0) {
+                        bot.sendMessage(chatId, "Ваш список слів пустий")
+                    }
+                    else{
+                        var keys_list = Object.keys(obj[chatId_str])
+                        for (var i = 0; i < keys_list.length; i++){
+                            bot.sendMessage(chatId, obj[chatId_str][keys_list[i]] + ' - ' + keys_list[i])
+                        }
+                    }
+                    show_all = false;
+                }
+                else if (true_user === false){
+                    bot.sendMessage(chatId, "Ваш список слів пустий")
+                }
+            }});
+        } 
     }
 
     
 
     if (msg.text === 'Додати слово українською'){
         add_word_ukr = true;
+        check_word = true;
         bot.sendMessage(chatId, 'Введіть слово!',{
             reply_markup:{
                 remove_keyboard: true,
@@ -132,6 +342,7 @@ bot.on('message', (msg) => {
 
     if (msg.text === 'Додати слово англійською'){
         add_word_engl = true;
+        check_word = true;
         bot.sendMessage(chatId, 'Введіть слово!',{
             reply_markup:{
                 remove_keyboard: true,
@@ -172,118 +383,15 @@ bot.on('message', (msg) => {
             ]}
         })
     }
+
+    if (msg.text === 'Тільк українські слова'){
+        only_ukr = true;
+    }
+    else if (msg.text === 'Тільки англійські слова'){
+        only_engl = true;
+    }
+    else if (msg.text === 'Українські - Англійські'){
+        show_all = true;
+    }
+    
 });
-
-
-
-/*
-//console.log(file.table[0]['roof'])
-//fs.writeFileSync(fileName, JSON.stringify(obj));
-
-//get all keys
-/*
-var keys = [];
-for(var i = 0; i < file.table.length;i++){
-    Object.keys(file.table[i]).forEach(function(key){
-        if(keys.indexOf(key) == -1)
-        {
-            keys.push(key);
-        }
-    });
-}
-console.log(keys);
-*/
-
-
-//add a word to json file 
-/*
-fs.readFile(fileName, 'utf8', function readFileCallback(err, data){
-  if (err){
-      console.log(err);
-  } else {
-  obj = JSON.parse(data); 
-  obj["rock"] = "камінь";
-  json = JSON.stringify(obj); //convert it back to json
-  fs.writeFile(fileName, json, function writeJSON(err){});
-}});
-*/
-
-
-/*
-test = {}
-
-test['1'] = 'q'
-test['2'] = 'w'
-test['3'] = 'e'
-test['4'] = 'r'
-test['5'] = 't'
-
-test2 = {}
-
-var k_eys = Object.keys(test)
-for (var i = 0; i < Object.keys(test).length; i++){
-    k_ey = k_eys[i]
-    vallues = test[k_eys[i]]
-    test2[vallues] = k_ey
-}
-
-console.log(test)
-console.log(test2)
-
-var k_eys = Object.keys(test2)
-for (var i = 0; i < Object.keys(test2).length; i++){
-    k_ey = k_eys[i]
-    vallues = test2[k_eys[i]]
-    test[vallues] = k_ey
-}
-
-console.log(test2)
-console.log(test)
-
-
-
-
-
-
-
-if (work != '' && add_word_ukr === true){
-
-    var ukr_word = msg.text;
-    async function trans(){
-        var translator = await talegram_translation (ukr_word, {from: 'uk', to: 'en'});
-        fs.readFile(fileName_ukr, 'utf8', function readFileCallback(err, data){
-            if (err){
-                console.log(err);
-            } else {
-            obj = JSON.parse(data); 
-            obj[ukr_word] = translator['text'];
-            json = JSON.stringify(obj); //convert it back to json
-            fs.writeFile(fileName_ukr, json, function writeJSON(err){});
-        }});
-    }
-    trans()
-    bot.sendMessage(chatId, ukr_word)
-}
-
-if (work != '' && add_word_engl === true){
-
-    var engl_word = msg.text;
-    async function trans(){
-        var translator = await talegram_translation (engl_word, {from: 'uk', to: 'en'});
-        fs.readFile(fileName_engl, 'utf8', function readFileCallback(err, data){
-            if (err){
-                console.log(err);
-            } else {
-            obj = JSON.parse(data); 
-            obj[engl_word] = translator['text'];
-            json = JSON.stringify(obj); //convert it back to json
-            fs.writeFile(fileName_engl, json, function writeJSON(err){});
-        }});
-    }
-    trans()
-    bot.sendMessage(chatId, engl_word)
-}
-test("foo", () => {
-    Promise.reject(new Error());
-    expect(1).toBe(1);
-  });*/
