@@ -5,7 +5,7 @@ const token = '5111912871:AAHNb8DvfGLHoelXn43kcLwZJwceqthk-a4';
 const bot = new TelegramBot(token, {polling: true});
 
 const fs = require('fs');
-const fileName_all = './list_of_words/english.json'
+const fileName_all = './list_of_words/words.json'
 
 var work = '';
 var translate_all = false;
@@ -18,6 +18,10 @@ var show_all = false;
 var check_word = false;
 var true_word = false;
 var true_user = false;
+var training = false;
+var choosed_train = '';
+var keys_output = []
+
 
 var list_of_english_words = ' qwertyuiopasdfghjklzxcvbnm';
 var list_of_ukrainian_words = ' йцукенгшщзхїфівапролджєячсмитьбю';
@@ -72,7 +76,9 @@ bot.onText(/add_word/, (msg, match) => {
     check_word = false;
     true_word = false;
     true_user = false;
-
+    training = false;
+    choosed_train = '';
+    keys_output = []
 
     bot.sendMessage(chatId, "Add a word",{
         reply_markup: {
@@ -101,6 +107,9 @@ bot.onText(/translate/, (msg, match) => {
     check_word = false;
     true_word = false;
     true_user = false;
+    training = false;
+    choosed_train = '';
+    keys_output = []
     
     bot.sendMessage(chatId, "Translate",{
         reply_markup: {
@@ -129,6 +138,9 @@ bot.onText(/show_list/, (msg, match) => {
     check_word = false;
     true_word = false;
     true_user = false;
+    training = false;
+    choosed_train = '';
+    keys_output = []
     
     bot.sendMessage(chatId, "My list",{
         reply_markup: {
@@ -140,6 +152,40 @@ bot.onText(/show_list/, (msg, match) => {
         }
        }
     );
+})
+
+bot.onText(/train/, (msg, match) =>{
+
+    const chatId = msg.chat.id
+
+    work = 'training';
+    training = true;
+
+    translate_all = false;
+    add_word_ukr = false;
+    add_word_engl = false;
+    add_word_to_list = false;
+    only_ukr = false;
+    only_engl = false;
+    show_all = false;
+    check_word = false;
+    true_word = false;
+    true_user = false;
+    choosed_train = '';
+    keys_output = []
+
+    bot.sendMessage(chatId, "Розпочнем тренування",{
+        reply_markup: {
+            keyboard: [
+                ['Перекладати з англійських на українські слова'],
+                ['Перекладати з українських на англійські слова'],
+                ['Випадкові слова'], ['Дописати слова'],
+                ['Cancel']
+            ]
+        }
+       }
+    );
+
 })
 
 bot.on('message', (msg) => {
@@ -160,8 +206,11 @@ bot.on('message', (msg) => {
         only_ukr = false;
         only_engl = false;
         show_all = false;
-        true_word = false;
         check_word = false;
+        true_word = false;
+        true_user = false;
+        training = false;
+        choosed_train = '';
     
     }
 
@@ -194,11 +243,26 @@ bot.on('message', (msg) => {
         add_word_ukr = false;
         add_word_engl = false;}
     
+    if (work === 'training'){
+        if (msg.text === 'Перекладати з англійських на українські слова'){
+            choosed_train = 'from_eng_to_uk';
+        }
+        else if (msg.text === 'Перекладати з українських на англійські слова'){
+            choosed_train = 'from_uk_to_engl';
+        }
+        else if (msg.text === 'Випадкові слова'){
+            choosed_train = 'random_word';
+        }
+        else if (msg.text === 'Дописати слова'){
+            choosed_train = 'add_letter';
+        }
+    }
+
     if (check_word === true){
         var message = ''
-        if (add_word_engl === true){
+        if (add_word_engl === true && (msg.text != '/add_word' || msg.text != '/translate' || msg.text != '/show_list')){
             message =  check_message(msg.text, 'eng')}
-        else if (add_word_ukr === true){
+        else if (add_word_ukr === true && (msg.text != '/add_word' || msg.text != '/translate' || msg.text != '/show_list')){
             message =  check_message(msg.text, 'ukr')}
         
         if (message == true){
@@ -242,15 +306,16 @@ bot.on('message', (msg) => {
                     console.log(err);
                 } else {
                 obj = JSON.parse(data);
-                chatId =  chatId.toString()
+                chatId_str = chatId.toString()
                 var k_eys_chatid = Object.keys(obj);
                 var key_translate_word = Object.keys(translate_word);
                 chatId_str = chatId.toString()
                 for (i = 0; i < k_eys_chatid.length; i++){
-                    if (obj[k_eys_chatid[i]] === chatId_str){
+                    if (k_eys_chatid[i] === chatId_str){
                         obj[k_eys_chatid[i]][key_translate_word] = translate_word[key_translate_word]
+                        true_user = true;
                     }
-                    else if (i === k_eys_chatid.length -1 && obj[k_eys_chatid[i]] != chatId){
+                    else if (i === k_eys_chatid.length -1 && true_user === false){
                         obj[chatId] = {}
                         obj[chatId][key_translate_word] = translate_word[key_translate_word]
                     }
@@ -271,12 +336,12 @@ bot.on('message', (msg) => {
                 obj = JSON.parse(data);
                 var k_eys_chatid = Object.keys(obj);
                 chatId_str = chatId.toString()
+                var list_of_words = ''
                 for (i = 0; i < k_eys_chatid.length; i++){
                     if (k_eys_chatid[i] === chatId_str){
                         true_user = true;
                     }
                     else if (i === k_eys_chatid.length-1 && true_user === false){
-                        console.log(i === k_eys_chatid.length-1 && k_eys_chatid[i] != chatId_str)
                         obj[chatId] = {}
                     }
                 }
@@ -287,11 +352,11 @@ bot.on('message', (msg) => {
                     else{
                         var keys_list = Object.keys(obj[chatId_str])
                         for (var i = 0; i < keys_list.length; i++){
-                            bot.sendMessage(chatId, obj[chatId_str][keys_list[i]])
+                           list_of_words += obj[chatId_str][keys_list[i]] + '\n'
                         }
                     }
                     only_ukr = false;
-                   
+                    bot.sendMessage(chatId, list_of_words)
                 }
                 else if (only_engl === true && true_user === true){
                     if (Object.keys(obj[chatId_str]).length === 0) {
@@ -300,10 +365,11 @@ bot.on('message', (msg) => {
                     else{
                         var keys_list = Object.keys(obj[chatId_str])
                         for (var i = 0; i < keys_list.length; i++){
-                            bot.sendMessage(chatId, keys_list[i])
+                            list_of_words += keys_list[i] + '\n'
                         }
                     }
                     only_engl = false;
+                    bot.sendMessage(chatId, list_of_words)
                 }
                 else if (show_all === true && true_user === true){
                     if (Object.keys(obj[chatId_str]).length === 0) {
@@ -312,17 +378,51 @@ bot.on('message', (msg) => {
                     else{
                         var keys_list = Object.keys(obj[chatId_str])
                         for (var i = 0; i < keys_list.length; i++){
-                            bot.sendMessage(chatId, obj[chatId_str][keys_list[i]] + ' - ' + keys_list[i])
+                            list_of_words += obj[chatId_str][keys_list[i]] + ' - ' + keys_list[i] + '\n'
                         }
                     }
                     show_all = false;
+                    bot.sendMessage(chatId, list_of_words)
                 }
                 else if (true_user === false){
                     bot.sendMessage(chatId, "Ваш список слів пустий")
                 }
+
             }});
         } 
+
+        if (choosed_train != ''){
+            if (choosed_train === 'from_eng_to_uk');{
+                fs.readFile(fileName_all, 'utf8', function readFileCallback(err, data){
+                    if (err){
+                        console.log(err);
+                    } else {
+                        obj = JSON.parse(data);
+                        var k_eys_chatid = Object.keys(obj);
+                        chatId_str = chatId.toString()
+                        for (i = 0; i < k_eys_chatid.length; i++){
+                            if (k_eys_chatid[i] === chatId_str){
+                                true_user = true;
+                            }
+                            else if (i === k_eys_chatid.length-1 && true_user === false){
+                                obj[chatId] = {}
+                            }
+                        }
+                        if  (true_user === true){
+                            if (Object.keys(obj[chatId_str]).length === 0) {
+                                bot.sendMessage(chatId, "Ваш список слів пустий")
+                            }
+                            else{
+                                var keys_list = Object.keys(obj[chatId_str])
+                                numb = Math.floor(Math.random() * keys_list.length)
+                            
+                            }
+                        }
+                }
+            })
+        }
     }
+}
 
     
 
@@ -393,5 +493,5 @@ bot.on('message', (msg) => {
     else if (msg.text === 'Українські - Англійські'){
         show_all = true;
     }
-    
+   
 });
